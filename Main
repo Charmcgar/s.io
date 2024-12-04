@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slither.io Clone</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const ws = new WebSocket('ws://localhost:3000');
+
+    // Resize the canvas
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let player = null;
+    let players = [];
+
+    // Game loop
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw other players
+      players.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+        ctx.fillStyle = 'green';
+        ctx.fill();
+        ctx.closePath();
+      });
+
+      // Draw current player's snake
+      if (player) {
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, 10, 0, Math.PI * 2);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+        ctx.closePath();
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Handle incoming WebSocket messages
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type === 'init') {
+        player = data.player;
+      }
+
+      // Update players' positions
+      if (data.players) {
+        players = data.players;
+      }
+    };
+
+    // Send player movement to server
+    function sendMovement(x, y) {
+      if (player) {
+        ws.send(JSON.stringify({ type: 'move', x, y }));
+      }
+    }
+
+    // Mouse movement control
+    document.addEventListener('mousemove', (e) => {
+      if (player) {
+        sendMovement(e.clientX, e.clientY);
+      }
+    });
+
+    // Handle game starting
+    ws.onopen = () => {
+      console.log('Connected to server');
+    };
+
+    // Start the game loop
+    gameLoop();
+  </script>
+</body>
+</html>
